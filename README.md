@@ -40,7 +40,24 @@ npm run dev
 
 App: http://localhost:5173
 
+## Ollama setup (Step 3)
+
+1. Install: https://ollama.com/download
+2. Pull model: `ollama pull llama3`
+3. Verify: `ollama list`
+4. Test: `ollama run llama3 "Hello"`
+
+Ollama API runs at `http://localhost:11434` by default.
+
+## Chat API (Step 4)
+
+```bash
+curl -X POST http://localhost:3001/api/chat \
+  -H "Content-Type: application/json" \
+  -d '{"message":"What is React in one sentence?"}'
+```
+
 ## Requirements
 
 - Node.js 18+
-- Ollama (setup in Step 3)
+- Ollama with `llama3` model pulled
