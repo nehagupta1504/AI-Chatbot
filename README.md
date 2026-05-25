@@ -61,3 +61,5 @@ curl -X POST http://localhost:3001/api/chat \
 
 - Node.js 18+
 - Ollama with `llama3` model pulled
+
+![Chatbot Image](assets/chatbot-ss.png)
