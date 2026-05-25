@@ -1,29 +1,19 @@
 import { useState, useRef, useEffect } from 'react';
 import MessageBubble from './MessageBubble';
+import { sendChatMessage } from '../api/chatApi';
 
-const DEMO_MESSAGES = [
-  {
-    id: 1,
-    role: 'assistant',
-    content:
-      'Hello! I am your local AI assistant powered by Ollama (llama3). Ask me anything to get started.',
-  },
-  {
-    id: 2,
-    role: 'user',
-    content: 'Can you explain what React hooks are?',
-  },
-  {
-    id: 3,
-    role: 'assistant',
-    content:
-      'React hooks let you use state and other React features inside function components. We will connect real AI responses in a later step!',
-  },
-];
+const WELCOME_MESSAGE = {
+  id: 1,
+  role: 'assistant',
+  content:
+    'Hello! I am your local AI assistant powered by Ollama (llama3). Ask me anything to get started.',
+};
 
 export default function ChatBox() {
-  const [messages, setMessages] = useState(DEMO_MESSAGES);
+  const [messages, setMessages] = useState([WELCOME_MESSAGE]);
   const [input, setInput] = useState('');
+  const [isLoading, setIsLoading] = useState(false);
+  const [error, setError] = useState('');
   const messagesEndRef = useRef(null);
 
   const scrollToBottom = () => {
@@ -32,21 +22,42 @@ export default function ChatBox() {
 
   useEffect(() => {
     scrollToBottom();
-  }, [messages]);
+  }, [messages, isLoading]);
 
-  const handleSend = (e) => {
+  const handleSend = async (e) => {
     e.preventDefault();
     const trimmed = input.trim();
-    if (!trimmed) return;
+    if (!trimmed || isLoading) return;
 
-    const newMessage = {
+    const userMessage = {
       id: Date.now(),
       role: 'user',
       content: trimmed,
     };
 
-    setMessages((prev) => [...prev, newMessage]);
+    setMessages((prev) => [...prev, userMessage]);
     setInput('');
+    setError('');
+    setIsLoading(true);
+
+    try {
+      const reply = await sendChatMessage(trimmed);
+
+      const assistantMessage = {
+        id: Date.now() + 1,
+        role: 'assistant',
+        content: reply,
+      };
+
+      setMessages((prev) => [...prev, assistantMessage]);
+    } catch (err) {
+      const message =
+        err.response?.data?.error ||
+        'Failed to get a response. Is the backend and Ollama running?';
+      setError(message);
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   return (
@@ -66,24 +77,26 @@ export default function ChatBox() {
       {/* Messages */}
       <main className="flex-1 overflow-y-auto px-4 py-6">
         <div className="mx-auto max-w-3xl flex flex-col gap-4">
-          {messages.length === 0 ? (
-            <div className="flex flex-col items-center justify-center h-full min-h-[200px] text-center text-gray-500">
-              <p className="text-lg font-medium text-gray-700">
-                Start a conversation
-              </p>
-              <p className="text-sm mt-1">
-                Type a message below and press Send.
-              </p>
-            </div>
-          ) : (
-            messages.map((msg) => (
-              <MessageBubble
-                key={msg.id}
-                role={msg.role}
-                content={msg.content}
-              />
-            ))
+          {messages.map((msg) => (
+            <MessageBubble
+              key={msg.id}
+              role={msg.role}
+              content={msg.content}
+            />
+          ))}
+
+          {isLoading && (
+            <p className="text-sm text-gray-500 text-center py-2">
+              AI is thinking...
+            </p>
           )}
+
+          {error && (
+            <div className="rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
+              {error}
+            </div>
+          )}
+
           <div ref={messagesEndRef} />
         </div>
       </main>
@@ -99,15 +112,16 @@ export default function ChatBox() {
             value={input}
             onChange={(e) => setInput(e.target.value)}
             placeholder="Type your message..."
-            className="flex-1 rounded-xl border border-gray-300 bg-gray-50 px-4 py-3 text-sm sm:text-base text-gray-900 placeholder-gray-400 outline-none focus:border-emerald-500 focus:ring-2 focus:ring-emerald-500/20 transition"
+            disabled={isLoading}
+            className="flex-1 rounded-xl border border-gray-300 bg-gray-50 px-4 py-3 text-sm sm:text-base text-gray-900 placeholder-gray-400 outline-none focus:border-emerald-500 focus:ring-2 focus:ring-emerald-500/20 transition disabled:opacity-60"
             aria-label="Chat message input"
           />
           <button
             type="submit"
-            disabled={!input.trim()}
+            disabled={!input.trim() || isLoading}
             className="shrink-0 rounded-xl bg-emerald-600 px-5 py-3 text-sm sm:text-base font-medium text-white hover:bg-emerald-700 disabled:cursor-not-allowed disabled:opacity-50 transition"
           >
-            Send
+            {isLoading ? '...' : 'Send'}
           </button>
         </form>
       </footer>
